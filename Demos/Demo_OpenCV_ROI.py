@@ -76,8 +76,6 @@ class setROI():
         cv.destroyWindow('image')
         cv.destroyWindow('cropROI')
 
-
-
     def callbackMous(self,event,x,y,flags,param):
         if event == cv.EVENT_LBUTTONDBLCLK:
             self.roi[0] = x

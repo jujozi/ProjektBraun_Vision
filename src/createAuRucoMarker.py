@@ -1,38 +1,17 @@
 from cv2 import aruco
+import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from datetime import datetime
 import xml.etree.ElementTree as ET
 import os
+import pickle
 
-aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
-class aurucoMarker():
-    def __init__(self, id, name):
-        self.name = name
-        self.id = id
-        self.date = datetime.now()
-
-        print('GENERATE AuRuco marker...')
-        print('Generate maerker: '+name+' with Id:'+str(id))
-
-        self.img = aruco.drawMarker(aruco_dict,id, 500)
-
-    def createMarker(self):
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        ax.imshow(self.img, cmap=mpl.cm.gray, interpolation="nearest")
-        ax.axis("off")
-        plt.text(0, -60, 'Marker: '+self.name)
-        plt.text(0, -40, 'Id:         ' + str(self.id))
-        plt.text(0, -20, 'Date:    ' + self.date.strftime("%d/%m/%Y %H:%M:%S"))
-
-        plt.show()
-        self.fig = fig
-        self.fig.savefig("../configs/marker/"+self.name+".pdf")
 
 def createMarker(name,id,ConfigId):
     date = datetime.now()
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
     img = aruco.drawMarker(aruco_dict, id, 500)
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -44,9 +23,46 @@ def createMarker(name,id,ConfigId):
 
     plt.show()
     fig = fig
-    fig.savefig("../configs/"+ConfigId+'/marker/' + name + ".pdf")
+    pathPDF = "../configs/"+ConfigId+'/marker/' + name + ".pdf"
+    fig.savefig(pathPDF)
 
-    return date
+    return fig, date, pathPDF
+
+def createMarkerCharuco(ConfigId):
+    name = "CHARUCO"
+    date = datetime.now()
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
+    board = aruco.CharucoBoard_create(7, 5, 1, .8, aruco_dict)
+    imboard = board.draw((2000, 2000))
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.imshow(imboard, cmap=mpl.cm.gray, interpolation="nearest")
+    ax.axis("off")
+    plt.text(0, -100, 'Marker: ' + name)
+    plt.text(0, 0, 'Date:    ' + date.strftime("%d/%m/%Y %H:%M:%S"))
+    plt.show()
+
+    fig = fig
+    pathPDF = "../configs/"+ConfigId+'/marker/' + name + ".pdf"
+    fig.savefig(pathPDF)
+
+    f = open("../configs/"+ConfigId+'/marker/' + name + ".chauruco", 'wb')
+    pickle.dump(board, f)
+    f.close()
+
+    return fig, date, pathPDF
+
+def fuckit():
+    workdir = "../configs/Default/marker/"
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
+    board = aruco.CharucoBoard_create(7, 6, 1, .8, aruco_dict)
+    imboard = board.draw((2000, 2000))
+    cv.imwrite(workdir + "chessboard.tiff", imboard)
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    plt.imshow(imboard, cmap=mpl.cm.gray, interpolation="nearest")
+    ax.axis("off")
+    plt.show()
 
 def createFromXML(xmlFile):
     try:
@@ -59,9 +75,25 @@ def createFromXML(xmlFile):
     MarkerXML = tree.findall('marker')
     for marker in MarkerXML:
         markerAtrib = marker.attrib
-        date = createMarker(markerAtrib['Name'], int(markerAtrib['Id']), xmlFile)
+        fig, date, pathPDF = createMarker(markerAtrib['Name'], int(markerAtrib['Id']), xmlFile)
         marker.attrib['Date'] = date.strftime("%d/%m/%Y %H:%M:%S")
+        marker.attrib['Filename'] = pathPDF
         tree.write('../configs/'+xmlFile+'.xml')
 
+def setDimensions(xmlFile,id,dim):
+    #Open xmlFile
+    tree  = ET.parse('../configs/'+xmlFile+'.xml')
+    MarkerXML = tree.find("marker/[@Id='"+str(id)+"']")
+    MarkerXML.attrib['dimX'] = dim[0]
+    MarkerXML.attrib['dimY'] = dim[1]
+    print(MarkerXML.attrib)
+
+
 if __name__ == '__main__':
-    createFromXML('Default')
+    fuckit()
+    #createMarkerCharuco('Default')
+
+    #xmlFile = 'Default'
+    #id = 0
+    #setDimensions(xmlFile, id, [9.4, 9.4])
+    #createFromXML(xmlFile)
