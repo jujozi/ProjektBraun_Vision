@@ -1,5 +1,14 @@
 import cv2 as cv
 import numpy as np
+from cv2 import aruco
+
+
+def detectMarker(gray):
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_1000)
+    arucoParameters = aruco.DetectorParameters_create()
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(
+        gray, aruco_dict, parameters=arucoParameters)
+    return corners, ids, rejectedImgPoints
 
 def selInput():
 
