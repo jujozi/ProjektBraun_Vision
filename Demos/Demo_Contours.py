@@ -65,7 +65,10 @@ def loadConfigContours(Modul, ConfigId, pathDB = 'configs/Config.db'):
     else:
         print("DONE")
     return config
-    
+
+
+def nothing(x):
+    print(x)
 
 class CONTOURS():
     def __init__(self,configID):
@@ -77,7 +80,8 @@ class CONTOURS():
 
         #Config Gauss
         self.GaussianBlur_Enable = Config['GaussianBlur']
-        self.GaussianBlur_ksize = (Config['GaussianBlur_ksize_x'],Config['GaussianBlur_ksize_y'])
+        self.GaussianBlur_ksize_x = Config['GaussianBlur_ksize_x']
+        self.GaussianBlur_ksize_y = Config['GaussianBlur_ksize_y']
         self.GaussianBlur_sigma = Config['GaussianBlur_sigma']
 
         #config Canny
@@ -114,7 +118,7 @@ class CONTOURS():
         imgRect = self.FindRectangel(imgErod, frame)
 
         # Debug View
-        imgDebug = vl.stackImages([[imgGray, imgBlur, imgCann], [imgDila, imgErod, imgRect[0]]], 1, lables=['imgGray','imgBlur','imgCann', 'imgDila', 'imgErode', 'imgRect'])
+        imgDebug = vl.stackImages([[imgGray, imgBlur, imgCann], [imgDila, imgErod, imgRect[0]]], 1, lables=[['imgGray', 'imgBlur', 'imgCann'], ['imgDila', 'imgErod', 'imgRect']])
         cv.imshow("Display window", vl.ResizeWithAspectRatio(imgDebug, width=800))
 
         imgFinal = imgRect[0]
@@ -123,7 +127,9 @@ class CONTOURS():
     def GaussianBlur(self, src):
         # https://docs.opencv.org/master/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
         if self.GaussianBlur_Enable:
-            ksize = self.GaussianBlur_ksize
+            ksize_x = self.GaussianBlur_ksize_x
+            ksize_y = self.GaussianBlur_ksize_y
+            ksize = (ksize_x, ksize_y)
             sigma = self.GaussianBlur_sigma
             return cv.GaussianBlur(src, ksize, sigma)
         else:
@@ -157,6 +163,10 @@ class CONTOURS():
         else:
             return src
 
+    def ErodeDebug(self):
+        cv.namedWindow('ErodeDebug')
+        cv.createTrackbar('Erode_iterations', 'ErodeDebug', self.Dilate_iterations, 10, nothing)
+
     def FindRectangel(self, src, frame):
         # https://docs.opencv.org/master/dd/d49/tutorial_py_contour_features.html
         mode =  self.FindRechtangel_mode # https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga819779b9857cc2f8601e6526a3a5bc71
@@ -174,20 +184,19 @@ class CONTOURS():
             if minArea<area<maxArea:
                 contoursFilterd.append(contor)
                 # https://docs.opencv.org/master/d3/dc0/group__imgproc__shape.html#ga0012a5fdaea70b8a9970165d98722b4c
-                contoursAprox.append(cv.approxPolyDP(contor, cv.arcLength(contor, True)*0.05,True))
-            print(contoursFilterd)
-            print(contoursAprox)
+                contoursAprox.append(cv.approxPolyDP(contor, cv.arcLength(contor, True)*0.05, True))
         #cv.drawContours(frame, contoursFilterd, -1, (0, 255, 0), 3)
         cv.drawContours(frame, contoursAprox, -1, (0, 0, 255), 1)
         return frame, contoursFilterd, hierarchy
 
 if __name__ == '__main__':
     ConfigID = 7
-    Contours = CONTOURS(ConfigID)
+    Contours = CONTOURS(ConfigID, debug=True)
 
-    cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture(1)
     if not cap.isOpened():
         print("Cannot open camera ")
+
 
     loadConfigTime = time.time()
     while True:
@@ -210,6 +219,7 @@ if __name__ == '__main__':
         k = cv.waitKey(20) & 0xFF
         if k == 27:
             cv.destroyAllWindows()
+            cap.release()
             break
         elif k == ord("s"):
             cv.imwrite("SAVE.png", frame)

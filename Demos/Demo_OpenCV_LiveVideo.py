@@ -156,7 +156,7 @@ if __name__ == '__main__':
             print(camera_matrix)
             calib = True
 
-        if calib == True:
+        if calib is True:
             position = aruco.estimatePoseSingleMarkers(corners, 0.0094, camera_matrix, distortion_coefficients0)
             print(position)
         k = cv.waitKey(20) & 0xFF
