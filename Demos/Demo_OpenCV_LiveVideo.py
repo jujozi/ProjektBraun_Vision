@@ -85,7 +85,7 @@ if __name__ == '__main__':
     for Video in VideoXml:
         if Video.attrib['Device'] == CamName:
             CamXmlAtrib = Video.attrib
-            dev = int(CamXmlAtrib['adress'])
+            dev = 0
         else:
             print('Cam not configured')
 
@@ -146,6 +146,7 @@ if __name__ == '__main__':
                         allCorners.append(res2[1])
                         allIds.append(res2[2])
                         count+= 1
+                        print('calib: '+str(count))
                         lastTime = time.time()
                         print('Add calib'+str(count))
 
