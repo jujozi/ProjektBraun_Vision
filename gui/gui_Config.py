@@ -152,9 +152,6 @@ class Example(QWidget):
             label = QLabel(paraName)
             label.setFont(QtGui.QFont("Sanserif", 15))
 
-
-
-
             hbox.addWidget(labelVal)
             hbox.addWidget(paraSlider)
             hbox.addWidget(label)

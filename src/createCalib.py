@@ -9,7 +9,7 @@ import pickle
 
 import copy
 
-import VisionLib as vl
+from src import VisionLib as vl
 
 
 class getFrames():
@@ -66,23 +66,16 @@ class getFrames():
                         '[Sequence_ID] INTEGER )')
         return con, con
 
-    def autoCapture(self, dev):
-        print(self.__class__.__name__ + ': Start auto capturing')
-        print(self.__class__.__name__ + ': Connect to video device '+str(dev), end='')
-        cap = cv.VideoCapture(dev)
-        if not cap.isOpened():
-            print("Cannot open camera " + str(dev))
-            sys.exit()
-        print('CONNECTED')
-        print(self.__class__.__name__ + ': Enter stream loop ... ')
+    def autoCapture(self, Sequence_ID):
+        print(self.__class__.__name__ + ': Start auto capturing with sequence ID: ' +str(Sequence_ID))
         print('')
-        print('Frames witch show all markers will be automatically added to the database')
+        print(self.__class__.__name__ +': Frames which show all markers will be automatically added to the database')
 
         lastTime = 0
         count = 0
         while True:
             # Capture frame-by-frame
-            ret, frame = cap.read()
+            ret, frame = self.cap.read()
             date = time.time()
             # if frame is read correctly ret is True
             if not ret:
@@ -99,19 +92,21 @@ class getFrames():
                         lastTime = time.time()
                         count += 1
                         print('Add calib' + str(count))
-                        self.saveFrame(frame, date)
+                        self.saveFrame(frame, date, Sequence_ID)
                         frame = aruco.drawDetectedMarkers(frame, corners, ids=ids)
-
-
-            cv.imshow("StackedImages", frame)
+            cv.imshow("MainView", frame)
             k = cv.waitKey(20) & 0xFF
             if k == 27:
                 break
 
     def openCam(self, dev):
+        Sequence_ID = 0
         self.dev = dev
         print(self.__class__.__name__ + ': Open Cam '+str(dev)+' ... ', end='')
-        self.cap = cv.VideoCapture(dev)
+        if self.cap is None:
+            self.cap = cv.VideoCapture(dev)
+        else:
+            print('alredy open... ')
         if not self.cap.isOpened():
             print("FAILD")
             sys.exit()
@@ -133,22 +128,62 @@ class getFrames():
             gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             corners, ids, rejectedImgPoints = vl.detectMarker(gray)
             frame_Marker = aruco.drawDetectedMarkers(frame, corners)
-            cv.imshow('Calibration', frame_Marker)
+            cv.imshow('MainView', frame_Marker)
             k = cv.waitKey(20) & 0xFF
             if k == 27:
-                cv.destroyWindow('Calibration')
-                self.cur.close()
-                self.con.close()
-                self.cap.release()
+                cv.destroyWindow('MainView')
+                #self.cur.close()
+                #self.con.close()
+                #self.cap.release()
                 break
             if k == ord('s'):
                 print(self.__class__.__name__ + ': Save frame')
-                self.saveFrame(frame, date)
+                self.saveFrame(frame, date, Sequence_ID)
 
-    def saveFrame(self, frame, date):
+    def saveFrame(self, frame, date, Sequence_ID):
         retval, buf	 = cv.imencode('.png', frame)
-        self.cur.execute(' INSERT INTO Frames (Sequence_ID, Date, Camera_ID, Frame) VALUES (?, ?, ?, ?)',(self.Sequence_ID, date, self.dev, buf))
+        self.cur.execute(' INSERT INTO Frames (Sequence_ID, Date, Camera_ID, Frame) VALUES (?, ?, ?, ?)',(Sequence_ID, date, self.dev, buf))
         self.con.commit()
+
+    def showUndistorted(self,Calib_ID):
+        print(self.__class__.__name__ + ': Initialize undistorted view with Calib_ID: '+str(Calib_ID)+' ... ')
+
+        print(self.__class__.__name__ + ': Get cameraMatrix ... ', end='')
+        cur = self.con.cursor()
+        cur.execute("SELECT cameraMatrix FROM Calib WHERE Calib_ID='%i'" % (Calib_ID,))
+        cameraMatrix_b = cur.fetchone()[0]
+        cameraMatrix = np.frombuffer(cameraMatrix_b)
+        cameraMatrix = cameraMatrix.reshape(3,-1)
+        print('DONE')
+        print(cameraMatrix)
+
+        print(self.__class__.__name__ + ': Get distCoeffs ... ', end='')
+        cur = self.con.cursor()
+        cur.execute("SELECT distCoeffs FROM Calib WHERE Calib_ID='%i'" % (Calib_ID,))
+        distCoeffs_b = cur.fetchone()[0]
+        distCoeffs = np.frombuffer(distCoeffs_b)
+        distCoeffs = distCoeffs.reshape(5,-1)
+        print('DONE')
+        print(distCoeffs)
+
+        print(self.__class__.__name__ + ': Entering streaming loop ... ')
+        while True:
+            # Capture frame-by-frame
+            ret, frame = self.cap.read()
+            # if frame is read correctly ret is True
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ... ")
+                break
+            frameUndist = cv.undistort(frame, cameraMatrix, distCoeffs)
+            cv.imshow('MainView', frameUndist)
+            k = cv.waitKey(20) & 0xFF
+            if k == 27:
+                cv.destroyWindow('MainView')
+                #self.cur.close()
+                #self.con.close()
+                self.cap.release()
+
+                break
 
 def detectMarker(gray):
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_1000)
@@ -190,10 +225,10 @@ class Calibrate():
             npFrame = np.frombuffer(BFrame[0], np.uint8)
             frame = cv.imdecode(npFrame, cv.IMREAD_COLOR)
             while True:
-                cv.imshow('Calibration', frame)
+                cv.imshow('MainView', frame)
                 k = cv.waitKey(20) & 0xFF
                 if k == 27:
-                    cv.destroyWindow('Calibration')
+                    cv.destroyWindow('MainView')
                     break
 
 
@@ -288,13 +323,15 @@ class Calibrate():
 
 
 if __name__ == '__main__':
-    #Frames = getFrames()
+    Frames = getFrames()
     #Frames.createDB()
-    #Frames.openCam(0)
+    Frames.openCam(0)
     #Frames.autoCapture(0)
 
-    Calib = Calibrate()
-    Calib.getMarker(1)
-    Calib.getCalib(1)
+
+    #Calib = Calibrate()
+    #Calib.getMarker(1)
+    #Calib.getCalib(1)
+    Frames.showUndistorted(5)
 
     sys.exit()
