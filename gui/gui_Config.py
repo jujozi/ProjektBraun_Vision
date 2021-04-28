@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 
-from PyQt5.QtWidgets import (QWidget, QSlider, QHBoxLayout,
+from PyQt5.QtWidgets import (QWidget, QSlider, QHBoxLayout, QPushButton,
                              QLabel, QApplication, QVBoxLayout, QCheckBox, QLineEdit, QGridLayout)
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -19,11 +19,22 @@ class Example(QWidget):
         self.ConfigID = 7
         self.conDB = self.connectDB()
         self.cur, config = self.getConfig(self.conDB, self.modulName)
+
+        self.layout = QVBoxLayout()
+        buttons = self.buildDBConfig()
         self.slider = self.buildParaModuls(config)
 
+        self.layout.addLayout(buttons)
+        self.layout.addLayout(self.slider)
+
         self.window = QWidget()
-        self.window.setLayout(self.slider)
+        self.window.setLayout(self.layout)
         self.window.show()
+
+    def setConfigID(self, ConfigID):
+        self.ConfigID = ConfigID
+        self.cur, config = self.getConfig(self.conDB, self.modulName)
+        self.slider = self.buildParaModuls(config)
 
     def connectDB(self, pathDB = 'configs/Config.db'):
 
@@ -80,6 +91,26 @@ class Example(QWidget):
         self.cur.execute(sqlExe)
         val = self.cur.fetchone()[0]
         return val
+
+    def buildDBConfig(self):
+        layout = QHBoxLayout()
+
+        label = QLabel('Config ID:')
+
+        textBox = QLineEdit()
+        textBox.resize(200, 30)
+
+        buttonLoad = QPushButton('Load')
+        buttonSave = QPushButton('Save')
+
+        layout.addWidget(label)
+        layout.addWidget(textBox)
+        layout.addWidget(buttonLoad)
+        layout.addWidget(buttonSave)
+
+        return layout
+
+
 
     def buildParaModuls(self, config):
         config = config[2:]
