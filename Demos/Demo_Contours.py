@@ -191,9 +191,9 @@ class CONTOURS():
 
 if __name__ == '__main__':
     ConfigID = 7
-    Contours = CONTOURS(ConfigID, debug=True)
+    Contours = CONTOURS(ConfigID)
 
-    cap = cv.VideoCapture(1)
+    cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera ")
 
